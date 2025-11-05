@@ -13,3 +13,5 @@ then run
 python3 main.py
 
 inside the project's root folder and open the http://localhost:5000/ url.
+
+Note: The app uses CDNs so make sure that you are connected to the internet.
