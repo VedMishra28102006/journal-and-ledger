@@ -1,5 +1,8 @@
 from datetime import datetime
 from flask import Flask, jsonify, render_template, request
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 import sqlite3
 
 app = Flask(__name__)
@@ -75,6 +78,13 @@ def fy():
 		rows = cursor.fetchall()
 		rows = [dict(row) for row in rows]
 		db.close()
+		fy_q = request.args.get("fy_q")
+		if fy_q:
+			vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 4))
+			tfidf_matrix = vectorizer.fit_transform([row["name"].lower() for row in rows])
+			query_vec = vectorizer.transform([fy_q.strip().lower()])
+			sim_scores = cosine_similarity(query_vec, tfidf_matrix).flatten()
+			rows = [rows[i] for i in sim_scores.argsort()[::-1] if sim_scores[i] >= 0.3]
 		return jsonify(rows), 200
 	elif request.method == "PATCH":
 		error = check_fields(request.form, ["id", "fy_name"])
@@ -211,6 +221,13 @@ def ledger(id):
 		""")
 		rows = cursor.fetchall()
 		rows = [dict(row) for row in rows]
+		ledger_q = request.args.get("ledger_q")
+		if ledger_q:
+			vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 4))
+			tfidf_matrix = vectorizer.fit_transform([row["account"].lower() for row in rows])
+			query_vec = vectorizer.transform([ledger_q.strip().lower()])
+			sim_scores = cosine_similarity(query_vec, tfidf_matrix).flatten()
+			rows = [rows[i] for i in sim_scores.argsort()[::-1] if sim_scores[i] >= 0.3]
 		return jsonify(rows), 200
 	balance = 0
 	cursor.execute(f"SELECT id,date,ac_credited AS account,amount FROM journal_{row["id"]} WHERE ac_debited=?", (account,))

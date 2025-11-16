@@ -37,45 +37,6 @@
 				justify-content: center;
 				width: 100%;
 			}
-			#fy_form {
-				background-image: linear-gradient(to right, pink, yellow);
-				box-shadow: 0px 0px 5px black;
-				display: flex;
-				flex-direction: row;
-				padding: 0px;
-				position: sticky;
-				top: 80px;
-				z-index: 1;
-			}
-			#fy_form > button {
-				background-image: linear-gradient(to right, pink, yellow);
-				border: none;
-				box-shadow: 0px 0px 5px black;
-				cursor: pointer;
-				font-size: large;
-				font-weight: bold;
-				padding: 10px 20px 10px;
-			}
-			#fy_form > #fy_wrapper {
-				background-image: linear-gradient(to right, pink, yellow);		
-				display: flex;
-				flex: 1;
-				padding: 5px;
-				padding-right: 0px;
-			}
-			#fy_form > #fy_wrapper > input {
-				background-color: rgba(0, 0, 0, 0.7);
-				border: none;
-				caret-color: white;
-				color: white;
-				flex: 1;
-				font-size: large;
-				outline: none;
-				padding: 10px;
-			}
-			#fy_form > #fy_wrapper > input::placeholder {
-				color: white;
-			}
 			#fy_list,
 			#ledger_list {
 				display: flex;
@@ -405,6 +366,45 @@
 				position: fixed;
 				width: 100%;
 			}
+			.top_form {
+				background-image: linear-gradient(to right, pink, yellow);
+				box-shadow: 0px 0px 5px black;
+				display: flex;
+				flex-direction: row;
+				padding: 0px;
+				position: sticky;
+				top: 80px;
+				z-index: 1;
+			}
+			.top_form > button {
+				background-image: linear-gradient(to right, pink, yellow);
+				border: 1px solid black;
+				box-shadow: 0px 0px 5px black;
+				cursor: pointer;
+				font-size: large;
+				font-weight: bold;
+				padding: 10px 20px 10px;
+				z-index: 1;
+			}
+			.top_form > .tf_wrapper {
+				background-image: linear-gradient(to right, pink, yellow);		
+				display: flex;
+				flex: 1;
+				padding: 5px;
+			}
+			.top_form > .tf_wrapper > input {
+				background-color: rgba(0, 0, 0, 0.7);
+				border: none;
+				caret-color: white;
+				color: white;
+				flex: 1;
+				font-size: large;
+				outline: none;
+				padding: 10px;
+			}
+			.top_form > .tf_wrapper > input::placeholder {
+				color: white;
+			}
 		</style>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
@@ -429,10 +429,6 @@
 					<li onclick="
 						journal.style.display='none';
 						ledger.style.display='block';
-						if (!first_fetch) {
-							fetch_ledger_menu();
-							first_fetch = true;
-						}
 					">Ledger</li>
 				</ul>
 			</nav>
@@ -444,11 +440,12 @@
 		</div>
 		<main>
 			<div id="fy">
-				<form id="fy_form">
-					<div id="fy_wrapper">
+				<form class="top_form" id="fy_form">
+					<button id="search_btn" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+					<div class="tf_wrapper">
 						<input id="fy_name" name="fy_name" placeholder="financial year..." type="text">
 					</div>
-					<button type="submit">+</button>
+					<button id="add_btn" type="submit"><i class="fa-solid fa-plus"></i></button>
 				</form>
 				<ul id="fy_list"></ul>
 			</div>
@@ -491,6 +488,12 @@
 			</div>
 			<div id="ledger">
 				<div id="ledger_menu">
+					<form class="top_form" id="ledger_search">
+						<div class="tf_wrapper">
+							<input id="ledger_q" name="ledger_q" placeholder="search account..." type="text">
+						</div>
+						<button type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+					</form>
 					<ul id="ledger_list"></ul>
 					<div class="toolbar_wrapper"><div class="toolbar">
 						<button onclick="show_fy()">
@@ -612,48 +615,56 @@
 			fy_form.addEventListener("submit", (event) => {
 				event.preventDefault();
 				let data = new FormData(fy_form);
-				fetch("/fy", {
-					method: "POST",
-					body: data
-				}).then(response => response.json())
+				if (event.submitter.id == "add_btn") {
+					fetch_fy();
+					fetch("/fy", {
+						method: "POST",
+						body: data
+					}).then(response => response.json())
+					.then(data => {
+						if (data.error && data.id) {
+							let fy = document.getElementById(`${data.id}`);
+							fy.scrollIntoView({
+								behavior: "smooth",
+								block: "center"
+							});
+							fy.style.backgroundImage = "linear-gradient(to right, rgb(30, 30, 30), rgb(50, 50, 50))";
+							setTimeout(() => {
+								fy.style.backgroundImage = "linear-gradient(to right, black, rgb(30, 30, 30))";
+							}, 500);
+						} else if (data.success) {
+							fy_form.querySelector("input").value = "";
+							fy_list.insertAdjacentHTML("beforeend", fy_item(data.row));
+							fy_list.children[fy_list.children.length-1].scrollIntoView({
+								behavior: "smooth",
+								block: "center"
+							});
+							fy_list.children[fy_list.children.length-1].style.backgroundImage = "linear-gradient(to right, rgb(30, 30, 30), rgb(50, 50, 50))";
+							setTimeout(() => {
+								fy_list.children[fy_list.children.length-1].style.backgroundImage = "linear-gradient(to right, black, rgb(30, 30, 30))";
+							}, 500);
+						}
+					})
+					.catch(error => {alert(error);});
+				}
+				if (event.submitter.id == "search_btn") {
+					fetch_fy(data.get("fy_name"));
+				}
+			});
+			let fetch_fy = (fy_q=null) => {
+				fy_list.innerHTML = "";
+				fetch(`/fy${(fy_q) ? `?fy_q=${fy_q}` : ""}`, {method: "GET"})
+				.then(response => response.json())
 				.then(data => {
-					if (data.error && data.id) {
-						let fy = document.getElementById(`${data.id}`);
-						fy.scrollIntoView({
-							behavior: "smooth",
-							block: "center"
-						});
-						fy.style.backgroundImage = "linear-gradient(to right, rgb(30, 30, 30), rgb(50, 50, 50))";
-						setTimeout(() => {
-							fy.style.backgroundImage = "linear-gradient(to right, black, rgb(30, 30, 30))";
-						}, 500);
-					} else if (data.success) {
-						fy_form.querySelector("input").value = "";
-						fy_list.insertAdjacentHTML("beforeend", fy_item(data.row));
-						fy_list.children[fy_list.children.length-1].scrollIntoView({
-							behavior: "smooth",
-							block: "center"
-						});
-						fy_list.children[fy_list.children.length-1].style.backgroundImage = "linear-gradient(to right, rgb(30, 30, 30), rgb(50, 50, 50))";
-						setTimeout(() => {
-							fy_list.children[fy_list.children.length-1].style.backgroundImage = "linear-gradient(to right, black, rgb(30, 30, 30))";
-						}, 500);
+					for (row of data) {
+						fy_list.insertAdjacentHTML("beforeend", fy_item(row));
 					}
 				})
 				.catch(error => {
 					alert(error);
 				});
-			});
-			fetch("/fy", {method: "GET"})
-			.then(response => response.json())
-			.then(data => {
-				for (row of data) {
-					fy_list.insertAdjacentHTML("beforeend", fy_item(row));
-				}
-			})
-			.catch(error => {
-				alert(error);
-			});
+			};
+			fetch_fy();
 			let edit_fy = (id) => {
 				document.getElementById(`options${id}`).style.display = "none";
 				let fy = document.getElementById(`${id}`);
@@ -798,6 +809,7 @@
 					}
 				})
 				.catch(error => {alert(error);});
+				fetch_ledger_menu();
 			};
 			let submit_journal = () => {
 				let dates = journal_form.querySelectorAll("input[name='date']");
@@ -885,10 +897,11 @@
 			let ledger_menu = document.getElementById("ledger_menu");
 			let ledger_list = document.getElementById("ledger_list");
 			let ledger_account = document.getElementById("ledger_account");
-			let first_fetch = false;
-			let fetch_ledger_menu = () => {
+			let ledger_search = document.getElementById("ledger_search");
+			let fetch_ledger_menu = (ledger_q=null) => {
 				ledger_list.innerHTML = "";
-				fetch(`ledger/${journal_form.getAttribute("fy_id")}`, {method: "GET"})
+				ledger_search.querySelector("input").value = "";
+				fetch(`ledger/${journal_form.getAttribute("fy_id")+ ((ledger_q) ? `?ledger_q=${ledger_q}` : "")}`, {method: "GET"})
 				.then(response => response.json())
 				.then(data => {
 					if (data.error) {
@@ -905,6 +918,11 @@
 				})
 				.catch(error => {alert(error);});
 			};
+			ledger_search.addEventListener("submit", async (event) => {
+				event.preventDefault();
+				let data = new FormData(ledger_search);
+				fetch_ledger_menu(data.get("ledger_q"));
+			});
 			let fetch_ledger_account = (account) => {
 				ledger_table.querySelector("tbody").innerHTML = "";
 				fetch(`ledger/${journal_form.getAttribute("fy_id")}?account=${account}`, {method: "GET"})
